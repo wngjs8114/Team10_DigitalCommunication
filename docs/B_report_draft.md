@@ -126,7 +126,8 @@ git apply --ignore-space-change --directory=build/professor simulation/LinkLevel
 cmake -S simulation/LinkLevelSimulation -B build/rectangular -G 'Visual Studio 17 2022' -A x64 "-DPROFESSOR_SOURCE_DIR=$PWD/build/professor/Source"
 cmake --build build/rectangular --config Release
 python -m pip install -r requirements.txt
-python simulation/run_experiment.py --constellations data/constellations.csv --theoretical-ser results/metrics/theoretical_ser.csv --simulator build/rectangular/Release/rectangular_experiment.exe --output-root build/report-reproduction --max-symbols 2000000 --target-errors 2000 --seed 20261128 --receipt
+python -c "from pathlib import Path; from subprocess import check_output; root=Path('build/report-input'); files=('data/constellations.csv','results/metrics/theoretical_ser.csv'); [(root/name).parent.mkdir(parents=True,exist_ok=True) or (root/name).write_bytes(check_output(['git','show','2a5d016:'+name])) for name in files]"
+python simulation/run_experiment.py --constellations build/report-input/data/constellations.csv --theoretical-ser build/report-input/results/metrics/theoretical_ser.csv --simulator build/rectangular/Release/rectangular_experiment.exe --output-root build/report-reproduction --max-symbols 2000000 --target-errors 2000 --seed 20261128 --receipt
 ~~~
 
 C++ 실험 코드는 `5d482e8`, 최종 산출물은 `86b6cb0`에 기록되어 있다. 같은 실행 환경에서 반복 생성한 매핑, 매핑 지표, 실험 결과 CSV는 바이트 단위로 일치하였다. 제출용 SHA-256과 대조할 때는 CRLF 변환이 없는 Git 원본(LF)을 사용한다. 정규 난수열은 C++ 표준 라이브러리 구현에 따라 달라질 수 있다. [입출력 해시 기록](../results/metrics/optimized_run_receipt.json) · [Git LF 원본 재현 절차](../simulation/README.md)

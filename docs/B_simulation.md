@@ -6,7 +6,7 @@
 
 비부호화 조건에서 \(E_s=5E_b=1\)이다. 따라서 \(E_b/N_0=\gamma_b=10^{\mathrm{EbN0}_{\mathrm{dB}}/10}\)이면 각 실수축의 분산은 \(N_0/2=1/(10\gamma_b)\)이다. 실행 로그에서 0 dB의 축당 설정 분산이 0.1임을 확인했다. `std::mt19937`을 지점마다 `20261128 + ebn0_db`로 초기화했다. 심볼 인덱스는 균등 분포로 뽑았고 I/Q에는 각각 별도의 영평균 정규 표본을 사용했다.
 
-0~20 dB에서 1 dB 간격으로, 심볼 오류 2,000개 또는 전송 심볼 2,000,000개에 먼저 도달하면 종료했다. 결과 파일은 [simulation_results.csv](../results/metrics/simulation_results.csv)이고 현재 행은 모두 `Rectangular,initial`이다.
+0~20 dB에서 1 dB 간격으로, 심볼 오류 2,000개 또는 전송 심볼 2,000,000개에 먼저 도달하면 종료했다. 2단계의 [기준 CSV](https://github.com/wngjs8114/Team10_DigitalCommunication/blob/093a60d/results/metrics/simulation_results.csv)는 `Rectangular,initial` 21행이다. 재실행 경로는 `build/rectangular/baseline.csv`이다.
 
 | Eb/N0 (dB) | 전송 심볼 | 심볼 오류 | 비트 오류 | 관측 SER | 관측 BER | 이론 SER |
 | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -29,7 +29,7 @@
 - Windows x64, MSVC 19.44.35217.0, CMake 3.31.6-msvc6, C++17, Release에서 [빌드·실행 절차](../simulation/README.md)를 검증했다. 짧은 실행은 각 지점에서 1,000심볼을 전송했다. 본 실행은 21행의 스키마, 시드, 종료 조건, 오류 수와 비율을 확인했고, 재실행 결과와 모든 바이트가 일치했다.
 - 입력 `QAM32.cpp` SHA-256은 `b61ce8e2eaa6a7d34468a12365728b2574670545e77d69567fde2250c448c5d1`이다.
 - 두 본 실행의 CSV SHA-256은 `a5616ac9853e6306a07bab95548c41ae485a13625328a4204f5ff1e76d7f12bf`이다.
-- macOS 빌드와 컴파일러 간 난수열 일치는 검증 범위 밖이다. Type1~3과 최적화 매핑은 다음 단계에서 실험한다.
+- macOS 빌드와 컴파일러 간 난수열 일치는 검증 범위 밖이다. Type1~3과 최적화 매핑의 제출용 결과는 이 문서의 5단계에 있다.
 
 
 ## 3단계 · 내장 성상도 Gray-like 매핑
@@ -58,7 +58,7 @@ Python 3.13.12에서 \(E_b/N_0=10\) dB, 시드 `20261128`, 50,000심볼로 실�
 | 초기 | 2,188 | 0.04376 | 3,927 | 0.015708 |
 | 최적화 | 2,188 | 0.04376 | 2,490 | 0.009960 |
 
-이 표본에서 관측 BER은 약 36.6% 감소했다. 4종 Eb/N0 비교와 A 최종 좌표의 SER·BER 실험은 후속 단계에서 수행한다.
+이 표본에서 관측 BER은 약 36.6% 감소했다. A 최종 좌표의 4종 Eb/N0 비교는 이 문서의 5단계에 있다.
 
 같은 명령으로 재실행한 두 CSV는 바이트 단위로 일치했다. 출력 128행의 원본 좌표와 순서, 라벨 순열, 지표 8행을 독립 재검산했다. `main`의 `data/constellations.csv`로도 입력 경로를 검증했다. `scheme,point_id`로 대조한 128행 전체의 좌표 문자열이 입력과 동일했고, 복제한 `point_id`를 가진 테스트 입력은 거부했다. 입력 버전은 `main`의 `82076e4` 및 2단계에 기록한 교수님 `QAM32.cpp`의 SHA-256을 참조한다.
 
@@ -86,7 +86,7 @@ Windows x64, MSVC 19.44.35217.0 Release, C++17, Python 3.13.12, Matplotlib 3.11.
 - 검증 입력 `builtin_constellations.csv` SHA-256은 `a88ade1688a8c9340ac588f22702585bf68dc5f41f47fdb4a74ed1fd19967af4`이다.
 - 검증 결과 `simulation_results.csv` SHA-256은 `9381d2bf560e2cab82edffe3887404546a7d26ce312c23c3eda1a988f91b4ae3`이다.
 
-A 확정 좌표의 21개 지점 실험은 후속 실행에 남겨 두었다.
+A 확정 좌표의 21개 지점 실험 결과는 이 문서의 5단계에 있다.
 
 
 ## 5단계 · A 확정 좌표를 사용한 제출용 실험

@@ -13,9 +13,9 @@ git apply --ignore-space-change --directory=build/professor simulation/LinkLevel
 cmake -S simulation/LinkLevelSimulation -B build/rectangular -G 'Visual Studio 17 2022' -A x64 "-DPROFESSOR_SOURCE_DIR=$PWD/build/professor/Source"
 cmake --build build/rectangular --config Release
 .\build\rectangular\Release\rectangular_experiment.exe build/rectangular/smoke.csv 1000 2000
-.\build\rectangular\Release\rectangular_experiment.exe results/metrics/simulation_results.csv 2000000 2000
+.\build\rectangular\Release\rectangular_experiment.exe build/rectangular/baseline.csv 2000000 2000
 .\build\rectangular\Release\rectangular_experiment.exe build/rectangular/repeat.csv 2000000 2000
-Get-FileHash results/metrics/simulation_results.csv,build/rectangular/repeat.csv
+Get-FileHash build/rectangular/baseline.csv,build/rectangular/repeat.csv
 ~~~
 
 ### macOS
@@ -26,8 +26,10 @@ cp -R ../LinkLevelSimulation/Source build/professor/
 git apply --ignore-space-change --directory=build/professor simulation/LinkLevelSimulation/professor-adaptation.patch
 cmake -S simulation/LinkLevelSimulation -B build/rectangular -DCMAKE_BUILD_TYPE=Release -DPROFESSOR_SOURCE_DIR="$PWD/build/professor/Source"
 cmake --build build/rectangular
-./build/rectangular/rectangular_experiment results/metrics/simulation_results.csv 2000000 2000
+./build/rectangular/rectangular_experiment build/rectangular/baseline.csv 2000000 2000
 ~~~
+
+위 단독 실험은 내장 Rectangular 기준을 재현한다. 제출용 4종 실험은 아래 일괄 실행 절차를 사용한다.
 
 인자 순서는 출력 CSV, 지점당 최대 전송 심볼 수, 목표 심볼 오류 수이다. 두 수를 생략하면 각각 2,000,000과 2,000을 사용한다. 같은 빌드에서 같은 인자로 실행하면 같은 결과를 얻는다. C++ 표준 라이브러리 구현에 따라 정규 난수열은 달라질 수 있다.
 
