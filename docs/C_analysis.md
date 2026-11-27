@@ -262,6 +262,6 @@ Type1은 10 dB의 오류율, 성상점과 파형 피크, 대칭에서 유리하�
 
 ### 10–11 · 시나리오와 결론
 
-[PA 제약 시나리오](scenarios/scenario_pa.md)에서는 공식 BER와 파형 P99를 근거로 Type1을 조건부 선정했다. [세 시나리오 종합](scenarios/scenario_comparison.md)에 KPI, 절충, 변경 요청 및 공통 질문 4개를 정리했다. Alarm은 B의 시나리오 결과 확인 대기다. PA 비선형 왜곡, 실제 효율, 패킷 실패율은 본 파형·AWGN 비교에서 직접 측정하지 않았다.
+[PA 제약 시나리오](scenarios/scenario_pa.md)에서는 공식 BER와 파형 P99를 근거로 Type1을 조건부 선정했다. [세 시나리오 종합](scenarios/scenario_comparison.md)에 KPI, 절충, 변경 요청 및 공통 질문 4개를 정리했다. Alarm은 [B 보고서 10절](B_report_draft.md#10-scenario-5-산업용-긴급-alarm)의 동기 Gray QPSK 선정과 실패확률 강화 대응을 반영했다. PA 비선형 왜곡, 실제 효율, 패킷 실패율은 본 파형·AWGN 비교에서 직접 측정하지 않았다.
 
 [최종 CSV·그림·재현 기록](../analysis/final_results/README.md)
