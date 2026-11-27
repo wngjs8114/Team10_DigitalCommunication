@@ -10,9 +10,9 @@
 
 | 팀원 | 브랜치 | 역할 |
 | --- | --- | --- |
-| A | `feature/design` | 성상도 최적화, 기하 특성 및 이론적 SER, Drone 시나리오 |
-| B | `feature/simulation` | Gray-like Mapping, C++ 시뮬레이터 및 SER·BER, Alarm 시나리오 |
-| C | `feature/analysis` | PAPR·대칭성·결정 경계·수신 복잡도, PA 시나리오 및 결과 통합 |
+| 한규민 | `feature/design` | 성상도 최적화, 기하 특성 및 이론적 SER, Drone 시나리오 |
+| 최세용 | `feature/simulation` | Gray-like Mapping, C++ 시뮬레이터 및 SER·BER, Alarm 시나리오 |
+| 이주헌 | `feature/analysis` | PAPR·대칭성·결정 경계·수신 복잡도, PA 시나리오 및 결과 통합 |
 
 ## 파일 구조
 
