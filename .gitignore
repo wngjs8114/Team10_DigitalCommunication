@@ -26,12 +26,6 @@ share/python-wheels/
 *.egg
 MANIFEST
 
-# PyInstaller
-#   Usually these files are written by a python script from a template
-#   before PyInstaller builds the exe, so as to inject date/other infos into it.
-*.manifest
-*.spec
-
 # Installer logs
 pip-log.txt
 pip-delete-this-directory.txt
@@ -221,3 +215,20 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Team10 local editor files, C++ build outputs, and temporary files
+.DS_Store
+.idea/
+.vscode/
+obj/
+bin/
+*.o
+*.obj
+*.exe
+*.out
+*.dSYM/
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
