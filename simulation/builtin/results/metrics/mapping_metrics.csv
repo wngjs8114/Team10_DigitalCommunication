@@ -1,0 +1,9 @@
+scheme,mapping,mean_neighbor_hamming,gray_edge_ratio
+Rectangular,initial,1.0,1.0
+Rectangular,optimized,1.0,1.0
+Type1,initial,2.1346153846153846,0.23076923076923078
+Type1,optimized,1.1538461538461537,0.9230769230769231
+Type2,initial,2.38,0.24
+Type2,optimized,1.12,0.94
+Type3,initial,1.816326530612245,0.5102040816326531
+Type3,optimized,1.1224489795918366,0.8775510204081632
