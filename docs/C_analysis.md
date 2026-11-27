@@ -1,6 +1,6 @@
 # C 분석 및 검증 기록
 
-교수님 예제의 baseline과 팀 공식 좌표의 중간 결과를 기록한다. 최종 SER·BER 비교에는 B의 네 방식 실험과 실행 당시 버전 증거가 필요하다.
+교수님 예제의 baseline과 팀 공식 좌표의 중간 결과를 기록한다. baseline은 `analysis/baseline_results/rrc_sweep_verified/`, 공식 좌표 결과는 `analysis/preliminary_results/`를 참조한다. 각 집합의 Type1~3은 별도 설계다. 최종 SER·BER 비교에는 B의 네 방식 실험과 실행 당시 버전 증거가 필요하다.
 
 ## Phase 0 · 소스와 범위
 
@@ -28,7 +28,15 @@ python analysis/analyze.py --baseline --input analysis/baseline/baseline_mapped_
 
 ## 최종 데이터 적용 절차
 
-A와 B의 PR이 `main`에 병합되면 깨끗한 `feature/analysis` 작업 트리에서 `git fetch origin`과 `git merge origin/main`으로 최신 입력을 가져온다. `git rev-parse HEAD`를 실행 기록에 남긴다.
+B의 최종 Mapping과 네 방식의 실험이 `main`에 병합되면 C의 로컬 변경을 먼저 정리한 뒤 아래 명령으로 업데이트한다. Git 병합 커밋과 B가 보고한 시뮬레이터 커밋을 결과 검토 기록에 남긴다.
+
+```sh
+git switch feature/analysis
+git status --short --branch
+git fetch origin
+git merge origin/main
+git rev-parse HEAD origin/main
+```
 
 | 입력 | 검증 및 사용 |
 | --- | --- |
@@ -45,7 +53,7 @@ B로부터 **최적화 매핑 실험 당시** 사용한 두 입력 CSV와 그 �
 - `results/metrics/simulation_results.csv`
 - `results/metrics/mapping_metrics.csv`
 
-B의 실행 기록에서 공통 AWGN·ML 조건, Eb/N0 정의, `optimized`가 전달된 Mapping과 동일함을 확인한다. 그 뒤 아래 명령을 저장소 루트에서 실행한다. 첫 명령이 통과해야 분석이 실행된다.
+B의 실행 기록에서 공통 AWGN·ML 조건, Eb/N0 정의, `optimized`가 전달된 Mapping과 동일함을 확인한다. 그 뒤 아래 명령을 저장소 루트에서 실행한다. 준비한 JSON을 `analysis_runs/optimized_receipt.json`에 두고, `analysis_runs/final_optimized`가 아직 존재하지 않는지 확인한다. 첫 명령이 통과해야 분석이 실행된다.
 
 ```sh
 python -m analysis.validate_final_inputs --receipt analysis_runs/optimized_receipt.json && \
@@ -58,7 +66,7 @@ python analysis/analyze.py \
 
 검증기는 5개 CSV의 존재 여부, 버전 해시, 두 좌표 파일의 일치, 기하 지표, 비트 라벨, 오류 카운트와 SER·BER의 일관성, 네 방식의 최적화 결과가 공통 0–20 dB 그리드를 만족하는지 확인한다. 기하 지표의 재계산 대조 허용차는 절대값 `1e-6`이다. 팀이 다른 SNR 범위나 출력 정밀도를 합의하면 실험 기록과 검증 조건을 함께 갱신한다.
 
-최종 비교표에서는 동일한 Eb/N0에서 **SER과 BER을 각각** 비교하고, 순위가 바뀌면 SNR 구간을 구분한다. 독립 반복을 합칠 때는 중복 기록 여부와 시드를 확인한 후 오류 수 합을 해당 분모 합으로 나눈다. 초기 매핑 결과에는 해당 매핑의 별도 버전 증거를 확인한 뒤 개선 전후 비교에만 사용한다. 오류 0회는 표본 수와 함께 기록한다. 최종 비교표는 실제 팀 데이터 검증 후 작성한다.
+최종 비교표에서는 동일한 Eb/N0에서 **SER과 BER을 각각** 비교하고, 순위가 바뀌면 SNR 구간을 구분한다. 독립 반복을 합칠 때는 중복 기록 여부와 시드를 확인한 후 오류 수 합을 해당 분모 합으로 나눈다. 초기 매핑 결과에는 해당 매핑의 별도 버전 증거를 확인한 뒤 개선 전후 비교에만 사용한다. 오류 0회는 표본 수와 함께 기록한다. 실행 후 `run_metadata.json`의 입력·참조 해시를 B 실행 기록과 다시 대조한다. BER 경계 그림에는 검증된 B의 비트 매핑을 사용한다. PAPR·대칭성·복잡도는 C의 최종 실행 산출물에서, SER·BER는 B의 검증된 CSV에서 가져와 비교표를 작성한다. C 분석 명령 자체는 Monte Carlo 오류율을 추정하지 않는다.
 
 ## 4.1 결정 경계
 
@@ -124,13 +132,15 @@ macOS 가상환경의 NumPy 2.5.5, pandas 3.1.1, SciPy 1.18.1, Matplotlib 3.11.2
 
 `waveform_papr.csv`와 CCDF 그림은 기존 기본 조건을 유지한다. `waveform_papr_summary.csv`는 `scheme,roll_off,samples_per_symbol,frames,mean_papr_db,p95_papr_db,p99_papr_db`를 기록한다. `run_metadata.json`에는 기준 입력 해시, 시드와 실험 조건을 남긴다.
 
-## 8. 정성적 비교
+## 8. 정성적 비교 · baseline
 
 기준 실험에서 Type2의 성상점 PAPR와 기본 조건 파형 PAPR가 모두 가장 낮았다. 같은 조건에서 Rectangular는 독립 I/Q 판정으로 산술 연산과 비교를 줄일 수 있었으며, 대칭적인 배치는 판정 구조를 설명하기 쉽다. PAPR 우위는 열별 연산량이나 SER·BER 우위를 보장하지 않는다. PA 제약 시나리오에서 파형의 높은 백분위수는 필요한 피크 여유를 비교하는 근거가 된다. 허용 BER과 평균 송신전력 제한을 함께 적용한 최종 선택은 팀 데이터가 확보된 뒤 판단한다.
 
 검증된 CSV와 그림은 [baseline 보존본](../analysis/baseline_results/rrc_sweep_verified/README.md)에 있다.
 
 ## 공식 성상도 중간 분석 · main 82076e4
+
+입력은 `data/constellations.csv`의 SHA-256 `51af1252c298cf9516c5b4833264450dbd943f1b546d4ffd8f5cc58d52344f63`이다. 실행 당시 C 커밋은 `de412acbbe5c609a2aae6ad8ff783006b4c52937`, 병합한 main은 `82076e4df96cdcd3477353af9ca34bab2ac74bee`다. `run_metadata.json`의 입력·비교 파일 SHA-256 열 개를 실행 커밋과 현재 파일에서 다시 대조했다. 분석 코드의 Git blob과 SHA-256도 일치했다. 임시 폴더에서 같은 조건을 재현한 결과 CSV 7개는 바이트 단위로, 파형 baseline 비교 CSV 1개는 수치 단위로 일치했다. PNG 6개는 픽셀 단위로, PDF 6개는 생성 시각을 제외한 바이트 단위로 일치했다.
 
 ### 독립 기하 검산
 
@@ -176,6 +186,17 @@ RRC 기본 조건은 roll-off 0.35, 8 SPS, 시드 2026, 2,000프레임, 중앙 5
 
 roll-off 0.15·0.35·0.60과 4·8·16·32 SPS의 전 조합에서 Type1이 공식 4종 중 가장 낮은 P99를 보였다. 각 Type의 P99는 해당 baseline보다 12개 조건 모두 낮았다. 32 SPS 기준 P99의 최대 절대차는 4·8·16 SPS에서 각각 0.03876·0.03367·0.00690 dB였다. 유한 프레임의 샘플 기반 결과이며 PA 비선형성이나 실제 장비 효율은 측정하지 않았다.
 
+### PA 후보 비교 · 공식 Rectangular 대비 공식 Type1
+
+| 지표 | Rectangular | Type1 | 변화 |
+| --- | ---: | ---: | ---: |
+| 정규화 최소거리 | 0.392232 | 0.447214 | **14.0175% 증가** |
+| 성상점 PAPR (dB) | 3.484546 | 2.304489 | **1.180057 dB 감소** |
+| 파형 PAPR P99 (dB) | 6.899573 | 5.749793 | **1.149780 dB 감소** |
+| 정규화 최대 심볼 전력 | 2.230769 | 1.700000 | **23.7931% 감소** |
+
+최소거리 증가율은 `100 × (d_Type1 / d_Rectangular − 1)`이며, 두 방식의 원시 최소거리가 모두 2라서 정규화 거리 비는 `sqrt(26/20)`이다. 최대 심볼 전력은 단위 평균 에너지로 정규화한 좌표의 최대 제곱 반경이다. 감소율은 `100 × [1 − (34/20)/(58/26)]`이다. dB 감소량은 같은 지표의 Rectangular 값에서 Type1 값을 뺐다. 파형 P99는 roll-off 0.35, 8 SPS의 프레임 비교다. PA 비선형 왜곡과 실제 전력 효율은 직접 측정하지 않았다.
+
 ### 이론과 B의 초기 실험 대조
 
 A의 코드는 비부호화 조건 \(E_s/N_0=5E_b/N_0\), \(\sigma^2=N_0/2=1/(10\gamma_b)\)를 사용한다. 거리 \(d\)인 경쟁점의 등거리선을 넘을 쌍별 확률은 \(Q(d/(2\sigma))\)다. 최근접 근사는 전역 최단거리 항만 남기고, 하계는 점마다 가장 가까운 경쟁점 하나의 확률을 평균한다. 상계는 모든 쌍의 오류 확률을 합산한 뒤 1에서 자른다. 점쌍과 표준정규 꼬리 함수를 독립 계산해 84행의 세 열을 최대 절대차 5.6×10⁻¹⁶ 이내로 재현했다. 저 SNR에서는 여러 경쟁점의 오류 사건이 겹쳐 합집합 상계가 느슨하고, 최단거리 항만 남긴 값도 정확한 SER 추정으로 쓰기 어렵다. 고 SNR에서는 멀리 있는 경쟁점의 꼬리 확률이 더 빨리 감소해 최소거리와 해당 이웃 수의 영향이 두드러진다.
@@ -189,3 +210,13 @@ B의 현재 CSV 21행은 모두 `Rectangular,initial`이며 0~20 dB를 1 dB 간�
 - **A**의 Drone 문서는 이미 공식 좌표 `2a5d016` 및 C 코드 `529ad8a`를 사용한다. 성상점 PAPR, 파형 P99와 Type1 그룹 연산 수가 본 실행과 반올림 범위에서 일치한다. baseline 오인에 따른 정정은 필요 없다. 최종 문서에서는 이웃 수가 전역 최소거리 기준이며 Type1 선택은 BER 검증 전 잠정안임을 유지한다.
 - **B**의 Rectangular 초기 검증은 현재 입력과 일치한다. 후속 단계에는 공식 4종의 매핑 및 동일 조건의 실험 결과, 최적화 실행 당시 입력·결과 해시가 필요하다. `optimized`를 사용한 최종 BER 결정 영역과 비교표는 그때 생성한다.
 - [공식 좌표 산출물](../analysis/preliminary_results/README.md)과 [PA 제약 중간안](scenarios/scenario_pa.md)을 참조한다.
+
+## 과제 요구사항 점검
+
+| 보고서 항목 | C 담당 상태 |
+| --- | --- |
+| 4.1 결정 경계 | 공식 4종의 심볼 ML 영역과 방법 검증 완료. 최종 비트 결정 영역은 B의 검증된 매핑 필요 |
+| 4.4 PAPR, 4.5 구현 복잡도, 4.6 대칭성, 7.3 PAPR 실험 분석 | 공식 4종 결과 확보. 구현 복잡도는 산술·비교 연산 수, 파형 결과는 시뮬레이션 수치로 해석 |
+| 8.1–8.2 정성적 비교 | 피크 여유·연산 비용·대칭성의 차이 정리. 모든 지표를 묶은 최종 비교에는 B의 SER·BER 필요 |
+| 10. Scenario 9 및 시나리오 종합 | KPI 우선순위, 잠정 선택·절충, 저가 PA 변경 요청 대응 정리. BER 검증 후 선택 확정. 세 시나리오 비교표와 공통 질문 4개는 팀 보고서 통합 단계에서 작성 |
+| 2. 목표·평가 방법, 11. 결론, 13.1 자체 평가 | 팀 공통 보고서에서 통합 예정 |
