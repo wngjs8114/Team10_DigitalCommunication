@@ -2,6 +2,8 @@
 
 import argparse
 import csv
+import hashlib
+import json
 import math
 from pathlib import Path
 import subprocess
@@ -13,6 +15,7 @@ matplotlib.use("Agg")
 from matplotlib import pyplot as plt
 from matplotlib.lines import Line2D
 
+from experiment_comparison import THEORY_STYLES, read_theory, report_targets
 from mapping_optimizer import (
     BITS, DEFAULT_SEED, POINT_FIELDS, SCHEMES, read_builtin, validate, write_csv,
 )
@@ -73,16 +76,34 @@ def plot_results(
 ) -> None:
     directory.mkdir(parents=True, exist_ok=True)
     for metric in ("SER", "BER"):
-        fig, ax = plt.subplots(figsize=(8.4, 5), facecolor="white", layout="constrained")
+        zero_levels = {
+            scheme: [level for level in levels if float(results[scheme, level, "optimized"][metric]) == 0]
+            for scheme in SCHEMES
+        }
+        has_zeros = any(zero_levels.values())
+        if has_zeros:
+            fig, (ax, zero_ax) = plt.subplots(
+                2, 1, figsize=(8.4, 6), facecolor="white", layout="constrained",
+                sharex=True, gridspec_kw={"height_ratios": (4, 1)},
+            )
+            for row, (scheme, (color, marker)) in enumerate(SCHEME_STYLES.items()):
+                xs = zero_levels[scheme]
+                zero_ax.scatter(xs, [row] * len(xs), color=color, marker=marker, s=20)
+            zero_ax.set_yticks(range(len(SCHEMES)), SCHEMES, fontsize=7)
+            zero_ax.invert_yaxis()
+            zero_ax.set_title("Zero observed errors (both mappings)", loc="left", fontsize=9)
+            zero_ax.set_xlabel("Eb/N0 (dB)")
+            zero_ax.grid(axis="x", alpha=0.3)
+        else:
+            fig, ax = plt.subplots(figsize=(8.4, 5), facecolor="white", layout="constrained")
+            ax.set_xlabel("Eb/N0 (dB)")
         ax.set_yscale("log")
-        zeros = 0
         positives = 0
         for scheme, (color, marker) in SCHEME_STYLES.items():
             # Both mapping rows have the same observed SER. Plot the shared series once.
             mappings = ("optimized",) if metric == "SER" else tuple(MAPPING_STYLES)
             for mapping in mappings:
                 values = [float(results[scheme, level, mapping][metric]) for level in levels]
-                zeros += values.count(0)
                 positives += sum(value > 0 for value in values)
                 ax.plot(
                     levels, [value if value > 0 else math.nan for value in values],
@@ -101,28 +122,62 @@ def plot_results(
                 for mapping, style in MAPPING_STYLES.items()
             ]
         ax.legend(handles=handles, ncols=2, fontsize=8)
-        ax.set_xlabel("Eb/N0 (dB)")
         ax.set_ylabel(f"{metric} (probability)")
-        if len(levels) <= 7:
-            ax.set_xticks(levels)
+        ax.set_xticks(levels if len(levels) <= 7 else levels[::2])
         ax.grid(True, which="major", alpha=0.3)
         title = f"32-QAM {metric} · Built-in validation" if builtin else f"32-QAM {metric}"
         if metric == "SER":
             title += " · Shared by both mappings"
         ax.set_title(title)
-        if zeros:
-            ax.text(
-                0.01, 0.015, f"{zeros} zero-observation points omitted on the log axis",
-                transform=ax.transAxes, fontsize=8, color="#374151",
-                bbox={"facecolor": "white", "alpha": 0.9, "edgecolor": "none"},
-            )
-        filename = directory / f"{metric.lower()}_comparison"
-        fig.savefig(filename.with_suffix(".png"), dpi=300, facecolor="white")
-        fig.savefig(
-            filename.with_suffix(".pdf"), facecolor="white",
-            metadata={"CreationDate": None, "ModDate": None},
-        )
-        plt.close(fig)
+        save_figure(fig, directory / f"{metric.lower()}_comparison")
+
+
+def save_figure(fig, filename: Path) -> None:
+    fig.savefig(filename.with_suffix(".png"), dpi=300, facecolor="white")
+    fig.savefig(
+        filename.with_suffix(".pdf"), facecolor="white",
+        metadata={"CreationDate": None, "ModDate": None},
+    )
+    plt.close(fig)
+
+
+def plot_theory(
+    results: dict[tuple[str, int, str], dict[str, str]],
+    theory: dict[tuple[str, int], dict[str, float]],
+    levels: list[int],
+    directory: Path,
+) -> None:
+    fig, axes = plt.subplots(
+        2, 2, figsize=(9.2, 7.2), facecolor="white", layout="constrained",
+        sharex=True, sharey=True,
+    )
+    for ax, (scheme, (color, marker)) in zip(axes.flat, SCHEME_STYLES.items()):
+        observed = [float(results[scheme, level, "optimized"]["SER"]) for level in levels]
+        for field, (_, style) in THEORY_STYLES.items():
+            ax.semilogy(levels, [theory[scheme, level][field] for level in levels],
+                        color="#575e6c", linestyle=style, linewidth=1)
+        ax.semilogy(levels, [value if value else math.nan for value in observed],
+                    color=color, marker=marker, linewidth=1.5, markersize=4)
+        zero_levels = [level for level, rate in zip(levels, observed) if rate == 0]
+        # Marker position is in axes coordinates vertically, so it encodes no probability.
+        ax.plot(zero_levels, [0.035] * len(zero_levels), marker="x", linestyle="none",
+                color=color, transform=ax.get_xaxis_transform(), markersize=5)
+        ax.set_title(scheme)
+        ax.grid(axis="y", which="major", alpha=0.3)
+    handles = [Line2D([], [], color="#202635", label="Observed SER")]
+    handles += [
+        Line2D([], [], color="#575e6c", linestyle=style, label=label)
+        for label, style in THEORY_STYLES.values()
+    ]
+    handles.append(Line2D([], [], color="#202635", marker="x", linestyle="none",
+                          label="Zero observed errors (axis marker)"))
+    fig.suptitle("32-QAM SER · Simulation and theoretical reference")
+    for ax in axes[-1]:
+        ax.set_xlabel("Eb/N0 (dB)")
+    fig.supylabel("SER (probability)")
+    fig.legend(handles=handles, loc="outside lower center", ncols=2, fontsize=8)
+    save_figure(fig, directory / "ser_theory_comparison")
+
 
 
 def parse_levels(text: str) -> list[int]:
@@ -142,6 +197,8 @@ def main() -> None:
     source.add_argument("--constellations", type=Path, help="Team constellations.csv")
     parser.add_argument("--simulator", type=Path, required=True)
     parser.add_argument("--output-root", type=Path, required=True)
+    parser.add_argument("--theoretical-ser", type=Path, help="Overlay A's theoretical SER")
+    parser.add_argument("--receipt", action="store_true", help="Write hashes for a full team run")
     parser.add_argument("--levels", type=parse_levels, default=list(range(21)))
     parser.add_argument("--max-symbols", type=int, default=2_000_000)
     parser.add_argument("--target-errors", type=int, default=2_000)
@@ -153,6 +210,9 @@ def main() -> None:
         parser.error("target-errors or seed out of range")
     if not args.simulator.is_file():
         parser.error("Build the C++ simulator and pass its executable with --simulator")
+
+    if args.receipt and (not args.constellations or args.levels != list(range(21))):
+        parser.error("A receipt requires the complete 0–20 dB grid and a team coordinate CSV")
 
     root = args.output_root
     metrics_dir = root / "results/metrics"
@@ -176,6 +236,8 @@ def main() -> None:
         input_csv = args.constellations or fixture
         if input_csv.resolve() in {path.resolve() for path in (mapped, mapping_metrics, result_path)}:
             raise ValueError("Constellation input must be distinct from generated CSV outputs")
+        theory = read_theory(args.theoretical_ser, args.levels) if args.theoretical_ser else None
+        input_hash = hashlib.sha256(input_csv.read_bytes()).hexdigest() if args.receipt else None
         subprocess.run(
             [sys.executable, str(optimizer), "--constellations", str(input_csv),
              "--mapped-output", str(mapped), "--metrics-output", str(mapping_metrics),
@@ -190,6 +252,18 @@ def main() -> None:
         )
         results = read_results(result_path, args.levels, args.max_symbols, args.target_errors, args.seed)
         plot_results(results, args.levels, figures_dir, builtin=args.builtin_qam32 is not None)
+        if theory:
+            plot_theory(results, theory, args.levels, figures_dir)
+        if args.receipt:
+            if hashlib.sha256(input_csv.read_bytes()).hexdigest() != input_hash:
+                raise ValueError("Source constellation CSV changed during the run")
+            receipt = {"data/constellations.csv": input_hash}
+            for artifact in (mapped, mapping_metrics, result_path):
+                receipt[artifact.relative_to(root).as_posix()] = hashlib.sha256(artifact.read_bytes()).hexdigest()
+            (metrics_dir / "optimized_run_receipt.json").write_text(
+                json.dumps(receipt, indent=2) + "\n", encoding="utf-8", newline="\n",
+            )
+            report_targets(results, args.levels)
         print(f"Validated {len(results)} rows and {len(results) // 2} paired SER comparisons.")
     except (OSError, ValueError, subprocess.CalledProcessError) as error:
         parser.exit(1, f"Simulation pipeline failed: {error}\n")

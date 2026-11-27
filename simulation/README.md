@@ -68,3 +68,19 @@ python simulation/run_experiment.py --constellations data/constellations.csv --s
 ~~~
 
 `--levels`를 생략하면 0~20 dB를 1 dB 간격으로 실행한다. 초기 라벨은 5비트 `point_id`이고 최적화 라벨은 매핑 CSV의 `bit_label`이다. 각 성상도·Eb/N0 지점에서 한 번 복조하고 두 라벨로 각각 비트 오류를 계산한다. SER 그래프에는 공통 곡선을 한 번만 그리고 BER 그래프는 초기 매핑을 점선, 최적화 매핑을 실선으로 표시한다. 관측 오류 0회 지점은 CSV에 0으로 기록하고 로그 그래프에 안내한다.
+
+
+### 제출용 이론 비교와 SHA-256 기록
+
+C에게 전달할 해시 기록이 필요하면 `--receipt`를 사용한다. 0~20 dB 전체 실행이 성공하면 `results/metrics/optimized_run_receipt.json`을 출력한다. `--theoretical-ser`를 사용하면 A의 최근접 근사와 쌍별 하계·합집합 상계를 실험 SER에 겹쳐 그린다.
+
+아래 명령은 A가 전달한 `2a5d016`의 Git 원본 바이트(LF)로 이번 제출용 실험을 재현한다. 첫 줄은 원본 두 CSV를 `build/` 아래에 복사한다. Windows에서 Git의 CRLF 변환이 적용된 작업 사본도 좌표 수치가 같지만, 파일 바이트에 대한 SHA-256은 달라진다.
+
+~~~powershell
+python -c "from pathlib import Path; from subprocess import check_output; root=Path('build/stage5-input'); files=('data/constellations.csv','results/metrics/theoretical_ser.csv'); [(root/name).parent.mkdir(parents=True,exist_ok=True) or (root/name).write_bytes(check_output(['git','show','2a5d016:'+name])) for name in files]"
+python simulation/run_experiment.py --constellations build/stage5-input/data/constellations.csv --theoretical-ser build/stage5-input/results/metrics/theoretical_ser.csv --simulator build/rectangular/Release/rectangular_experiment.exe --output-root build/stage5-final --receipt
+~~~
+
+명령은 초기·최적화의 목표 오류율별 Eb/N0 차이와 Rectangular 대비 차이를 출력한다. 목표값을 양의 실측 오류율로 양쪽에서 끼울 때만 로그 오류율에서 보간한다. 실측점이 목표값과 일치하면 그 지점의 Eb/N0를 사용한다. 0회 관측 지점을 포함한 구간과 여러 교차 후보가 있는 경우는 보간값을 출력하지 않는다.
+
+C 검사기에 직접 전달할 때는 해시 대상인 좌표, 매핑, 매핑 지표, 실험 CSV 네 파일의 LF 원본 바이트를 유지한다. 새 Windows 체크아웃은 `git -c core.autocrlf=false clone <repository>`로 만들거나 위 명령의 재실행 산출물을 사용할 수 있다.
