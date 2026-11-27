@@ -47,3 +47,24 @@ A 좌표의 보존 여부를 확인하는 명령은 아래와 같다. 이 예시
 ~~~sh
 python simulation/mapping_optimizer.py --constellations data/constellations.csv --mapped-output build/mapping-stage3/mapped_constellations.csv --metrics-output build/mapping-stage3/mapping_metrics.csv --seed 20261128
 ~~~
+
+
+## 매핑·C++ 시뮬레이션·그래프 일괄 실행
+
+위 절차대로 `rectangular_experiment`를 빌드하고, Python 환경에 `python -m pip install -r requirements.txt`로 그래프 의존성을 설치한다. 다음 예시는 Windows PowerShell에서 저장소 루트를 기준으로 실행한다. macOS에서는 `--simulator build/rectangular/rectangular_experiment`를 사용한다.
+
+### 내장 좌표로 통합 검증
+
+~~~powershell
+python simulation/run_experiment.py --builtin-qam32 ../LinkLevelSimulation/Source/Modulation/QAMa/QAM32.cpp --simulator build/rectangular/Release/rectangular_experiment.exe --output-root simulation/builtin/validation --levels "0,6,12" --max-symbols 100000 --target-errors 2000 --seed 20261128
+~~~
+
+원본 배열을 팀 CSV 규격의 `data/builtin_constellations.csv`로 내보낸 뒤 같은 CSV 경로로 매핑과 C++ 실험을 실행한다. 출력은 지정한 루트 아래 `data/mapped_constellations.csv`, `results/metrics/mapping_metrics.csv`, `results/metrics/simulation_results.csv` 및 `results/figures/`에 기록한다. 내장 좌표 결과와 그래프에는 검증용 출처를 표시했다.
+
+### A 확정 CSV로 전체 21개 지점 실행
+
+~~~powershell
+python simulation/run_experiment.py --constellations data/constellations.csv --simulator build/rectangular/Release/rectangular_experiment.exe --output-root build/final-awgn --max-symbols 2000000 --target-errors 2000 --seed 20261128
+~~~
+
+`--levels`를 생략하면 0~20 dB를 1 dB 간격으로 실행한다. 초기 라벨은 5비트 `point_id`이고 최적화 라벨은 매핑 CSV의 `bit_label`이다. 각 성상도·Eb/N0 지점에서 한 번 복조하고 두 라벨로 각각 비트 오류를 계산한다. SER 그래프에는 공통 곡선을 한 번만 그리고 BER 그래프는 초기 매핑을 점선, 최적화 매핑을 실선으로 표시한다. 관측 오류 0회 지점은 CSV에 0으로 기록하고 로그 그래프에 안내한다.
