@@ -12,15 +12,16 @@ Type1은 홀수×홀수, Type2는 짝수×짝수, Type3는 홀수×짝수 격자
 
 ## 3.2–3.5 성상도별 결과
 
-Rectangular는 교수님 제공 좌표의 행 순서를 사용한다. 기준 좌표를 확보하면 동일한 정규화와 거리 계산을 적용한다. 아래는 Type1~3 후보 실행 결과이다.
+Rectangular는 과제 PDF 1쪽의 4×8 배열을 순서대로 옮긴 reference/rectangular.csv를 사용한다. 네 방식에 동일한 정규화와 거리 계산을 적용했다. Type1~3의 좌표와 point_id는 기존 전달본과 같다.
 
 | 방식 | Es_raw | 정규화 d_min | 평균 최소거리 이웃 수 | 10 dB 최근접 근사 | 10 dB SER 상계 |
 | --- | ---: | ---: | ---: | ---: | ---: |
+| Rectangular | 26.00 | 0.392232 | 3.2500 | 0.08102 | 0.08843 |
 | Type1 | 20.00 | 0.447214 | 3.2500 | 0.04119 | 0.04345 |
 | Type2 | 20.75 | 0.439057 | 3.1250 | 0.04397 | 0.04673 |
 | Type3 | 20.50 | 0.441726 | 3.1875 | 0.04335 | 0.04593 |
 
-[성상도 및 SER 그림](../design/candidates/results/figures/constellations/)은 정규화 좌표를 같은 축 범위로 비교한다. Type1은 세 후보 중 평균 원본 에너지가 가장 낮고 정규화 후 최소거리가 가장 크다. Type2의 최소거리 이웃 수가 더 적지만 10 dB에서는 Type1의 거리 이득이 이웃 수 증가 효과를 앞선다. 이 수치는 세 후보의 근사와 상계 비교이며 4종 실측 순위는 기준 좌표와 B의 실험으로 확인한다.
+[성상도 및 SER 그림](../results/figures/constellations/)은 정규화 좌표를 같은 축 범위로 비교한다. Type1은 네 방식 중 평균 원본 에너지가 가장 낮고 정규화 후 최소거리가 가장 크다. Type2의 최소거리 이웃 수가 더 적지만 10 dB에서는 Type1의 거리 이득이 이웃 수 증가 효과를 앞선다. 10 dB에서 Type1의 근사와 상계는 네 방식 중 가장 낮다. 실측 순위는 B의 AWGN 실험으로 확인한다.
 
 ## 4.2 이론적 SER
 
@@ -38,8 +39,9 @@ Es = 1인 균등 심볼과 최소 거리 최대우도(ML) 판정을 사용한다
 
 ## 재현 기록
 
-- 명령은 python design/constellation_search.py --candidates-only이다.
+- 명령은 python design/constellation_search.py --rectangular reference/rectangular.csv이다.
 - 환경은 Python 3.14.2, NumPy 2.5.5, SciPy 1.18.1, Matplotlib 3.11.2이다.
-- 외부 입력과 Mapping이 없는 기하 분석이다. 방식별 시드 10과 초기 배치 32개를 사용했다. 이론 계산 구간은 Eb/N0 0~20 dB, 1 dB 간격이다.
-- design/candidates/data/constellations_candidates.csv의 SHA-256은 d6594f7d1fcef2275a64c51e352a225ae10ab2f1b6d4b41c2dd3f1f784aa77f9이다.
-- 후보 결과는 design/candidates/ 아래에 저장한다. 교수님 기준 좌표를 받으면 [실행 방법](../design/README.md)에 따라 네 방식의 공통 CSV를 생성한다.
+- Rectangular 입력은 과제 PDF 1쪽의 표를 사용하며 비트 Mapping을 사용하지 않는 기하 분석이다. 방식별 시드 10과 초기 배치 32개를 사용했다. 이론 계산 구간은 Eb/N0 0~20 dB, 1 dB 간격이다.
+- reference/rectangular.csv의 SHA-256은 f36930d940ffd6a9c0f7e4502e94f73bb7268e27978b1d09c97b9d9c1e534cc3이다.
+- data/constellations.csv의 LF 기준 SHA-256은 51af1252c298cf9516c5b4833264450dbd943f1b546d4ffd8f5cc58d52344f63이다.
+- B와 C는 공통 CSV의 scheme과 point_id를 기준으로 좌표를 대응한다. Rectangular의 point_id는 교수님 배열 순서이고 비트 Mapping은 팀원 B가 확정한다.
