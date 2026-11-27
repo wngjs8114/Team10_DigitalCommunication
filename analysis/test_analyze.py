@@ -1,3 +1,4 @@
+import csv
 import math
 import tempfile
 import unittest
@@ -8,8 +9,11 @@ import numpy as np
 from analysis.analyze import (
     constellation_metrics,
     empirical_ccdf,
+    frame_waveform,
     load,
+    ml_cells,
     receiver_metrics,
+    receiver_operation_counts,
     rrc,
     validate_mapping,
 )
@@ -66,6 +70,66 @@ class AnalysisTests(unittest.TestCase):
                     rows.to_csv(path, index=False)
                     with self.assertRaisesRegex(ValueError, message):
                         load(path)
+
+    def test_csv_binary64_precision(self):
+        with BASELINE.open(encoding="utf-8", newline="") as source:
+            expected = [(float(row["I_norm"]), float(row["Q_norm"]))
+                        for row in csv.DictReader(source)]
+        actual = self.data[["I_norm", "Q_norm"]].to_numpy()
+        np.testing.assert_array_equal(actual.view(np.uint64), np.asarray(expected).view(np.uint64))
+        changed = self.data.copy()
+        changed.loc[0, "I_norm"] = np.nextafter(changed.loc[0, "I_norm"], np.inf)
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "changed.csv"
+            changed.to_csv(path, index=False)
+            with self.assertRaisesRegex(ValueError, "changes coordinates"):
+                validate_mapping(load(path), self.data.drop(columns="bit_label"))
+
+    def test_receiver_operation_counts(self):
+        expected = {
+            "brute_force": (64, 32, 64, 31),
+            "grouped": (36, 4, 36, 31),
+            "independent_iq": (12, 0, 12, 10),
+        }
+        counts = receiver_operation_counts(self.points, "Rectangular")
+        for row in counts:
+            actual = tuple(row[key] for key in ("subtractions", "additions", "multiplications",
+                                                "comparisons"))
+            self.assertEqual(actual, expected[row["receiver"]])
+        self.assertEqual(len(counts), 6)
+        result = receiver_metrics("Rectangular", self.raw, self.points,
+                                  np.array([[0., 0.], *self.points]))
+        self.assertLessEqual(result["independent_index_mismatches"], result["tie_samples"])
+
+    def test_ml_cells_match_inequalities_and_cover_plot(self):
+        for name, group in self.data.groupby("scheme"):
+            with self.subTest(scheme=name):
+                points = group[["I_norm", "Q_norm"]].to_numpy()
+                area = 0
+                for index, cell in enumerate(ml_cells(points)):
+                    self.assertGreaterEqual(len(cell), 3)
+                    dist = np.sum((cell[:, None] - points)**2, axis=2)
+                    self.assertTrue(np.all(dist[:, index] <= dist.min(axis=1) + 1e-12))
+                    x, y = cell.T
+                    area += (np.dot(x, np.roll(y, -1)) - np.dot(y, np.roll(x, -1))) / 2
+                self.assertAlmostEqual(area, 16)
+
+    def test_frame_guards_and_delay(self):
+        rng = np.random.default_rng(12)
+        symbols = rng.normal(size=32) + 1j * rng.normal(size=32)
+        sps, guard = 8, 8
+        taps = rrc(0.35, sps, 10)
+        zero_inserted = np.zeros(len(symbols) * sps, dtype=complex)
+        zero_inserted[::sps] = symbols
+        full = np.convolve(zero_inserted, taps)
+        start = guard * sps + (len(taps) - 1) // 2
+        measured = frame_waveform(symbols, taps, sps, guard)
+        self.assertEqual(len(measured), (len(symbols) - 2 * guard) * sps)
+        np.testing.assert_allclose(measured, full[start:start + len(measured)], atol=1e-14)
+        padded = np.r_[100 + 100j, symbols, -100 - 100j]
+        np.testing.assert_allclose(frame_waveform(padded, taps, sps, guard + 1), measured)
+        with self.assertRaisesRegex(ValueError, "enough guard"):
+            frame_waveform(symbols, taps, sps, 4)
 
     def test_rrc_and_strict_ccdf(self):
         for beta in (0, 0.25, 0.35):

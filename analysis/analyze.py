@@ -12,18 +12,23 @@ PARITIES = {"Type1": [1, 1], "Type2": [0, 0], "Type3": [1, 0]}
 RECTANGULAR = {(i, q) for i in range(-3, 4, 2) for q in range(-7, 8, 2)}
 SEED = 2026
 TEST_SAMPLES = 10_000
-GRID_POINTS = 401
+PLOT_LIMIT = 2
 BETA = 0.35
 SPS = 8
 SPAN = 10
 FRAMES = 2000
 FRAME_SYMBOLS = 512
 GUARD = 8
+ROLL_OFFS = (0.15, BETA, 0.60)
+SAMPLE_RATES = (4, SPS, 16, 32)
 
 
 def load(path: Path) -> pd.DataFrame:
     """Read and validate either shared constellation CSV schema."""
-    df = pd.read_csv(path, dtype={"bit_label": "string"}, float_precision="round_trip")
+    # Python float preserves the nearest binary64 value of each decimal token.
+    df = pd.read_csv(
+        path, dtype={"bit_label": "string"}, converters={"I_norm": float, "Q_norm": float},
+    )
     if not isinstance(df.index, pd.RangeIndex):
         raise ValueError("Unexpected extra fields in CSV rows.")
     if df.columns.tolist() not in (COLUMNS, COLUMNS + ["bit_label"]):
@@ -114,29 +119,145 @@ def constellation_metrics(name: str, raw: np.ndarray, points: np.ndarray) -> dic
 
 def receiver_metrics(name: str, raw: np.ndarray, points: np.ndarray, test: np.ndarray) -> dict:
     """Compare direct ML to column-grouped ML, including distance ties."""
-    columns = np.unique(raw[:, 0])
-    groups = [np.flatnonzero(raw[:, 0] == column) for column in columns]
-    full = len(raw) == len(columns) * len(np.unique(raw[:, 1]))
+    columns = np.unique(points[:, 0])
+    groups = [np.flatnonzero(points[:, 0] == column) for column in columns]
+    full = len(raw) == len(columns) * len(np.unique(points[:, 1]))
     distances = np.sum((test[:, None] - points)**2, axis=2)
     brute = np.argmin(distances, axis=1)
-    # Each I column contributes a single nearest-Q candidate.
-    winners = np.stack([
-        idx[np.argmin((test[:, None, 1] - points[idx, 1])**2, axis=1)]
-        for idx in groups
-    ], axis=1)
+    # Reuse each winning Q term when adding the one I term for its column.
+    q_squared = (test[:, None, 1] - points[:, 1])**2
     samples = np.arange(len(test))
-    pred = winners[samples, np.argmin(np.sum((test[:, None] - points[winners])**2, axis=2), axis=1)]
+    winners = np.stack([idx[np.argmin(q_squared[:, idx], axis=1)] for idx in groups], axis=1)
+    i_squared = (test[:, None, 0] - points[[idx[0] for idx in groups], 0])**2
+    totals = i_squared + q_squared[samples[:, None], winners]
+    pred = winners[samples, np.argmin(totals, axis=1)]
     minimum = distances[samples, brute]
     same_distance = np.isclose(distances[samples, pred], minimum, rtol=0, atol=1e-12)
     ties = np.count_nonzero(np.isclose(distances, minimum[:, None], rtol=0, atol=1e-12), axis=1) > 1
     if not same_distance.all() or np.any((pred != brute) & ~ties):
         raise RuntimeError(f"{name}: grouped ML disagrees with brute-force ML.")
+    independent_mismatches = None
+    if full:
+        i_levels, i_first, i_index = np.unique(points[:, 0], return_index=True, return_inverse=True)
+        q_levels, q_first, q_index = np.unique(points[:, 1], return_index=True, return_inverse=True)
+        lookup = np.empty((len(i_levels), len(q_levels)), dtype=int)
+        lookup[i_index, q_index] = np.arange(len(raw))
+        nearest_i = np.argmin((test[:, None, 0] - points[i_first, 0])**2, axis=1)
+        nearest_q = np.argmin((test[:, None, 1] - points[q_first, 1])**2, axis=1)
+        independent = lookup[nearest_i, nearest_q]
+        independent_mismatch = independent != brute
+        if (not np.isclose(distances[samples, independent], minimum, rtol=0, atol=1e-12).all()
+                or np.any(independent_mismatch & ~ties)):
+            raise RuntimeError(f"{name}: independent I/Q ML disagrees with brute-force ML.")
+        independent_mismatches = int(independent_mismatch.sum())
+
     return dict(
         scheme=name, brute_candidates=32, brute_comparisons=31, I_columns=len(columns),
         grouped_final_candidates=len(columns), cartesian_product=int(full),
         test_samples=len(test), distance_agreement=1, tie_samples=int(ties.sum()),
         index_mismatches=int(np.count_nonzero(pred != brute)),
+        independent_index_mismatches=independent_mismatches,
     )
+
+
+def receiver_operation_counts(points: np.ndarray, scheme: str) -> list[dict]:
+    """Counts per received symbol for linear scans with precomputed group tables."""
+    n = len(points)
+    i_count, q_count = (len(np.unique(points[:, axis])) for axis in (0, 1))
+    modes = [
+        ("brute_force", 2 * n, n, 2 * n, n - 1),
+        ("grouped", n + i_count, i_count, n + i_count, (n - i_count) + (i_count - 1)),
+    ]
+    if n == i_count * q_count:
+        levels = i_count + q_count
+        modes.append(("independent_iq", levels, 0, levels, levels - 2))
+    return [
+        dict(scheme=scheme, receiver=mode, case=case, subtractions=sub, additions=add,
+             multiplications=mul, comparisons=cmp)
+        for mode, sub, add, mul, cmp in modes
+        for case in ("average", "worst")
+    ]
+
+
+def frame_waveform(symbols: np.ndarray, taps: np.ndarray, sps: int, guard: int) -> np.ndarray:
+    """Sample complete symbol intervals after compensating the FIR group delay."""
+    from scipy.signal import upfirdn
+
+    delay = (len(taps) - 1) // 2
+    if guard * sps < delay or symbols.shape[-1] <= 2 * guard:
+        raise ValueError("Frame must contain enough guard and measurement symbols.")
+    start = guard * sps + delay
+    stop = start + (symbols.shape[-1] - 2 * guard) * sps
+    return upfirdn(taps, symbols, up=sps, axis=-1)[..., start:stop]
+
+
+def waveform_papr(symbols: np.ndarray, taps: np.ndarray, sps: int) -> np.ndarray:
+    """Compute per-frame PAPR in dB using bounded batches."""
+    frame_papr = []
+    for start in range(0, len(symbols), 128):
+        signal = frame_waveform(symbols[start:start + 128], taps, sps, GUARD)
+        power = np.abs(signal)**2
+        frame_papr.extend(10 * np.log10(power.max(axis=1) / power.mean(axis=1)))
+    return np.asarray(frame_papr)
+
+
+def ml_cells(points: np.ndarray, limit: float = PLOT_LIMIT) -> list[np.ndarray]:
+    """Clip each ML cell to the plot box using pairwise bisector half-planes."""
+    box = [np.array(xy, dtype=float) for xy in
+           [(-limit, -limit), (limit, -limit), (limit, limit), (-limit, limit)]]
+    cells = []
+    for i, point in enumerate(points):
+        polygon = box
+        for j, rival in enumerate(points):
+            if i == j or not polygon:
+                continue
+            normal = rival - point
+            midpoint = (point + rival) / 2
+            clipped = []
+            for start, end in zip(polygon, polygon[1:] + polygon[:1]):
+                a = np.dot(start - midpoint, normal)
+                b = np.dot(end - midpoint, normal)
+                if a <= 0:
+                    clipped.append(start)
+                if (a < 0 < b) or (b < 0 < a):
+                    clipped.append(start + (end - start) * a / (a - b))
+            polygon = clipped
+        cells.append(np.asarray(polygon))
+    return cells
+
+
+def plot_boundaries(points, cells, labels, name, color, marker, figdir, baseline):
+    import matplotlib.pyplot as plt
+    from matplotlib.collections import PolyCollection
+    from matplotlib.patches import Patch
+
+    qualifier = " (baseline)" if baseline else ""
+
+    def draw(ax, colors, edges):
+        ax.add_collection(PolyCollection(cells, facecolors=colors, edgecolors=edges,
+                                         linewidths=0.5, antialiased=False))
+        ax.scatter(*points.T, c=color, marker=marker, s=26, edgecolors="white",
+                   linewidths=0.6, zorder=3)
+        ax.set(xlim=(-PLOT_LIMIT, PLOT_LIMIT), ylim=(-PLOT_LIMIT, PLOT_LIMIT),
+               xlabel="In-phase (normalized)", ylabel="Quadrature (normalized)", aspect="equal")
+
+    fig, ax = plt.subplots(figsize=(6, 6))
+    draw(ax, "#f1f5f9", "#475569")
+    ax.set_title(f"{name}: symbol ML regions{qualifier}")
+    save(fig, figdir / f"ser_boundary_{name}")
+    if labels is None:
+        return
+
+    bit_colors = ["#dbeafe", "#fecaca"]
+    fig, axes = plt.subplots(2, 3, figsize=(12, 8), layout="constrained")
+    for j, ax in enumerate(axes.flat[:5]):
+        draw(ax, [bit_colors[int(label[j])] for label in labels], "none")
+        ax.set_title(f"Bit {j + 1} (MSB first)")
+    axes.flat[5].axis("off")
+    axes.flat[5].legend(handles=[Patch(color=c, label=f"Bit {i}") for i, c in enumerate(bit_colors)],
+                        loc="center", frameon=False)
+    fig.suptitle(f"{name}: symbol ML bit decisions{qualifier}")
+    save(fig, figdir / f"ber_boundary_{name}")
 
 
 def main():
@@ -146,8 +267,10 @@ def main():
     parser.add_argument("--out", type=Path, required=True, help="A new output directory")
     parser.add_argument("--baseline", action="store_true", help="Label outputs as baseline")
     parser.add_argument("--waveform", action="store_true")
+    parser.add_argument("--waveform-sweep", action="store_true", help="Run RRC roll-off and SPS sweep")
     parser.add_argument("--metrics-only", action="store_true", help="Skip figures and waveform")
     args = parser.parse_args()
+    args.waveform = args.waveform or args.waveform_sweep
     if args.metrics_only and args.waveform:
         parser.error("--metrics-only cannot be combined with --waveform.")
     try:
@@ -168,7 +291,7 @@ def main():
             matplotlib.use("Agg")
             import matplotlib.pyplot as plt
         if args.waveform:
-            from scipy.signal import upfirdn
+            import scipy.signal
         out = args.out
         out.mkdir(parents=True, exist_ok=False)
     except (ImportError, OSError, ValueError) as error:
@@ -177,12 +300,14 @@ def main():
     figdir = out / "figures"
     if not args.metrics_only:
         figdir.mkdir()
-    rows, complexity, wave = [], [], []
+    rows, complexity, operations, wave, summaries = [], [], [], [], []
     test = np.random.default_rng(SEED).uniform(-3, 3, (TEST_SAMPLES, 2))
     if args.waveform:
         rng = np.random.default_rng(SEED)
         indices = rng.integers(0, 32, (FRAMES, FRAME_SYMBOLS + 2 * GUARD))
-        h = rrc(BETA, SPS, SPAN)
+        conditions = ([(beta, sps) for beta in ROLL_OFFS for sps in SAMPLE_RATES]
+                      if args.waveform_sweep else [(BETA, SPS)])
+        taps_by_condition = {(beta, sps): rrc(beta, sps, SPAN) for beta, sps in conditions}
 
     for name, color, marker in zip(SCHEMES, COLORS, MARKERS):
         g = df[df.scheme == name].sort_values("point_id")
@@ -190,43 +315,59 @@ def main():
         q = g[["I_norm", "Q_norm"]].to_numpy(float)
         rows.append(constellation_metrics(name, p, q))
         complexity.append(receiver_metrics(name, p, q, test))
+        operations.extend(receiver_operation_counts(q, name))
         if args.metrics_only:
             continue
-        axis = np.linspace(-2, 2, GRID_POINTS)
-        x, y = np.meshgrid(axis, axis)
-        grid = np.stack([x, y], axis=-1)
-        labels = np.argmin(np.sum((grid[:, :, None, :] - q)**2, axis=-1), axis=-1)
-        fig,ax=plt.subplots(figsize=(6,6)); ax.contourf(x,y,labels,levels=np.arange(-.5,32.5),cmap='tab20',alpha=.35); ax.scatter(*q.T,c=color,marker=marker,s=18); ax.set(xlabel='In-phase',ylabel='Quadrature',title=f'{name}: symbol ML regions',aspect='equal'); save(fig,figdir/f'ser_boundary_{name}')
-        if 'bit_label' in g:
-            bits=np.array([[int(b) for b in s] for s in g.bit_label]); fig,axs=plt.subplots(2,3,figsize=(12,8));
-            for j,ax in enumerate(axs.flat[:5]):
-                ax.contourf(x,y,bits[labels,j],levels=[-.5,.5,1.5],colors=['#dbeafe','#fecaca']); ax.scatter(*q.T,c=bits[:,j],cmap='coolwarm',vmin=0,vmax=1,s=15); ax.set(title=f'Bit {j} (MSB first)',xlabel='I',ylabel='Q',aspect='equal')
-            axs.flat[5].axis('off'); fig.suptitle(f'{name}: ML symbol decision then bit extraction (blue=0, red=1)'); save(fig,figdir/f'ber_boundary_{name}')
+        labels = g.bit_label.to_numpy() if "bit_label" in g else None
+        plot_boundaries(q, ml_cells(q), labels, name, color, marker, figdir, args.baseline)
         if args.waveform:
-            symbols = q[:, 0] + 1j * q[:, 1]
-            waveform = upfirdn(h, symbols[indices], up=SPS, axis=1)
-            # Drop the guard symbols and compensate for the FIR group delay.
-            start = GUARD * SPS + (len(h) - 1) // 2
-            power = np.abs(waveform[:, start:start + FRAME_SYMBOLS * SPS])**2
-            papr = 10 * np.log10(power.max(axis=1) / power.mean(axis=1))
-            wave.extend(dict(scheme=name, frame=i, papr_db=value) for i, value in enumerate(papr))
-    metrics=pd.DataFrame(rows); metrics.to_csv(out/'constellation_metrics.csv',index=False); pd.DataFrame(complexity).to_csv(out/'receiver_complexity.csv',index=False)
+            symbols = (q[:, 0] + 1j * q[:, 1])[indices]
+            for (beta, sps), taps in taps_by_condition.items():
+                papr = waveform_papr(symbols, taps, sps)
+                p95, p99 = np.quantile(papr, [0.95, 0.99], method="linear")
+                summaries.append(dict(
+                    scheme=name, roll_off=beta, samples_per_symbol=sps, frames=len(papr),
+                    mean_papr_db=papr.mean(), p95_papr_db=p95, p99_papr_db=p99,
+                ))
+                if (beta, sps) == (BETA, SPS):
+                    wave.extend(dict(scheme=name, frame=i, papr_db=value)
+                                for i, value in enumerate(papr))
+    metrics = pd.DataFrame(rows)
+    metrics.to_csv(out / "constellation_metrics.csv", index=False)
+    pd.DataFrame(complexity).astype({"independent_index_mismatches": "Int64"}).to_csv(
+        out / "receiver_complexity.csv", index=False,
+    )
+    pd.DataFrame(operations).to_csv(out / "receiver_operation_counts.csv", index=False)
+    qualifier = " (baseline)" if args.baseline else ""
     if not args.metrics_only:
-        fig,ax=plt.subplots(figsize=(7,4)); ax.bar(SCHEMES,metrics.papr_db,color=COLORS); ax.set(ylabel='Symbol PAPR (dB)'); ax.bar_label(ax.containers[0],fmt='%.3f'); save(fig,figdir/'papr_comparison')
+        fig, ax = plt.subplots(figsize=(7, 4))
+        ax.bar(SCHEMES, metrics.papr_db, color=COLORS)
+        ax.set(ylabel="Symbol PAPR (dB)", title=f"Constellation PAPR{qualifier}")
+        ax.bar_label(ax.containers[0], fmt="%.3f", padding=3)
+        ax.margins(y=0.15)
+        save(fig, figdir / "papr_comparison")
     if wave:
-        w=pd.DataFrame(wave); w.to_csv(out/'waveform_papr.csv',index=False); fig,ax=plt.subplots(figsize=(7,5));
-        for name,color in zip(SCHEMES,COLORS):
+        w = pd.DataFrame(wave)
+        w.to_csv(out / "waveform_papr.csv", index=False)
+        fig, ax = plt.subplots(figsize=(7, 5));
+        pd.DataFrame(summaries).to_csv(out / "waveform_papr_summary.csv", index=False)
+        for name, color, marker in zip(SCHEMES, COLORS, MARKERS):
             thresholds, probability = empirical_ccdf(w.loc[w.scheme == name, "papr_db"].to_numpy())
             positive = probability > 0
-            ax.step(thresholds[positive], probability[positive], where="post", label=name, color=color)
+            ax.step(thresholds[positive], probability[positive], where="post", label=name, color=color, marker=marker, markevery=250, markersize=3)
         ax.set_yscale("log")
-        ax.set(xlabel='Frame PAPR (dB)',ylabel='Empirical Pr(PAPR > x)'); ax.legend(); ax.grid(True,alpha=.3); save(fig,figdir/'papr_ccdf')
+        ax.set(xlabel="Frame PAPR (dB)", ylabel="Empirical Pr(PAPR > x)",
+               title=f"RRC waveform PAPR{qualifier}")
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+        save(fig, figdir / "papr_ccdf")
     metadata = {
         "baseline": args.baseline,
         "input_sha256": hashlib.sha256(args.input.read_bytes()).hexdigest(),
         "seed": SEED,
         "receiver_test_samples": TEST_SAMPLES,
-        "grid_points_per_axis": GRID_POINTS,
+        "decision_geometry": "clipped ML half-planes",
+        "decision_axis_limit": PLOT_LIMIT,
     }
     if args.reference:
         metadata["reference_sha256"] = hashlib.sha256(args.reference.read_bytes()).hexdigest()
@@ -234,6 +375,7 @@ def main():
         metadata["waveform"] = {
             "roll_off": BETA, "samples_per_symbol": SPS, "span_symbols": SPAN,
             "frames": FRAMES, "frame_symbols": FRAME_SYMBOLS, "guard_symbols": GUARD,
+            "conditions": [{"roll_off": beta, "samples_per_symbol": sps} for beta, sps in conditions],
         }
     (out / "run_metadata.json").write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
     print(metrics.to_string(index=False))
