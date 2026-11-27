@@ -63,3 +63,27 @@ Python 3.13.12에서 \(E_b/N_0=10\) dB, 시드 `20261128`, 50,000심볼로 실�
 같은 명령으로 재실행한 두 CSV는 바이트 단위로 일치했다. 출력 128행의 원본 좌표와 순서, 라벨 순열, 지표 8행을 독립 재검산했다. `main`의 `data/constellations.csv`로도 입력 경로를 검증했다. `scheme,point_id`로 대조한 128행 전체의 좌표 문자열이 입력과 동일했고, 복제한 `point_id`를 가진 테스트 입력은 거부했다. 입력 버전은 `main`의 `82076e4` 및 2단계에 기록한 교수님 `QAM32.cpp`의 SHA-256을 참조한다.
 
 출력 경로와 실행 명령은 [매핑 실행 절차](../simulation/README.md#gray-like-매핑)를 참조한다.
+
+
+## 4단계 준비 · 내장 좌표 CSV에서 C++ 결과와 그래프까지
+
+`main` 커밋 `7040a15`를 작업 브랜치에 반영한 뒤, 교수님 C++ 배열로 [검증용 좌표 CSV](../simulation/builtin/validation/data/builtin_constellations.csv)를 생성했다. 각 성상도 32점의 좌표와 순서는 3단계의 내장 데이터와 같다. 이 CSV를 Python 매핑 프로그램에 전달하고 C++의 `--mapped-csv`로 최적화 라벨과 정규화 좌표를 읽었다. C++은 `point_id` 순서의 성상점으로 기존 `QAMa`의 변복조와 `ErrorCount`를 재사용했다. 수신 판정 좌표는 한 번만 계산하고, 초기·최적화 라벨의 해밍 거리를 각각 누적했다. 각 성상도에서 출력 전 32개 무잡음 판정과 단위 평균 에너지를 검사했다.
+
+0, 6, 12 dB에서 지점당 최대 100,000심볼 또는 심볼 오류 2,000개를 종료 조건으로 사용했다. 시드는 `20261128 + ebn0_db`이다. 전체 24행에서 12쌍의 전송량, 시드, 심볼 오류 수와 SER이 각각 일치했다. 12 dB의 관측 결과는 다음과 같다.
+
+| 성상도 | 전송 심볼 | 두 매핑 공통 심볼 오류 | 비트 오류 전 → 후 | BER 전 → 후 |
+| --- | ---: | ---: | ---: | ---: |
+| Rectangular | 93,791 | 2,000 | 2,011 → 2,011 | 0.00428826 → 0.00428826 |
+| Type1 | 100,000 | 978 | 2,128 → 1,150 | 0.004256 → 0.002300 |
+| Type2 | 100,000 | 877 | 2,075 → 983 | 0.004150 → 0.001966 |
+| Type3 | 100,000 | 921 | 1,667 → 1,040 | 0.003334 → 0.002080 |
+
+세 지점 모두에서 Type1~3의 관측 BER이 낮아졌으며, Rectangular는 두 매핑이 동일했다. 전체 결과는 [실험 CSV](../simulation/builtin/validation/results/metrics/simulation_results.csv), [SER 그래프](../simulation/builtin/validation/results/figures/ser_comparison.png), [BER 그래프](../simulation/builtin/validation/results/figures/ber_comparison.png)에 있다.
+
+Windows x64, MSVC 19.44.35217.0 Release, C++17, Python 3.13.12, Matplotlib 3.11.2에서 [실행 절차](../simulation/README.md#매핑c-시뮬레이션그래프-일괄-실행)를 검증했다. 검증용 CSV 파일을 `--constellations` 경로로 다시 입력했을 때 매핑, 매핑 지표, 실험 CSV 세 개가 바이트 단위로 재현됐다. 중복 라벨은 C++에서 거부했다. 기존 Rectangular 단독 실행도 2단계 결과와 바이트 단위로 일치했다. 두 그림의 PNG는 300 DPI이고 PDF도 생성했다.
+
+- 교수님 원본 `QAM32.cpp` SHA-256은 2단계와 동일하다.
+- 검증 입력 `builtin_constellations.csv` SHA-256은 `a88ade1688a8c9340ac588f22702585bf68dc5f41f47fdb4a74ed1fd19967af4`이다.
+- 검증 결과 `simulation_results.csv` SHA-256은 `9381d2bf560e2cab82edffe3887404546a7d26ce312c23c3eda1a988f91b4ae3`이다.
+
+A 확정 좌표의 21개 지점 실험은 후속 실행에 남겨 두었다.
