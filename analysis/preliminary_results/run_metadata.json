@@ -1,0 +1,90 @@
+{
+  "input_sha256": "51af1252c298cf9516c5b4833264450dbd943f1b546d4ffd8f5cc58d52344f63",
+  "seed": 2026,
+  "receiver_test_samples": 10000,
+  "decision_geometry": "clipped ML half-planes",
+  "decision_axis_limit": 2,
+  "waveform": {
+    "roll_off": 0.35,
+    "samples_per_symbol": 8,
+    "span_symbols": 10,
+    "frames": 2000,
+    "frame_symbols": 512,
+    "guard_symbols": 8,
+    "conditions": [
+      {
+        "roll_off": 0.15,
+        "samples_per_symbol": 4
+      },
+      {
+        "roll_off": 0.15,
+        "samples_per_symbol": 8
+      },
+      {
+        "roll_off": 0.15,
+        "samples_per_symbol": 16
+      },
+      {
+        "roll_off": 0.15,
+        "samples_per_symbol": 32
+      },
+      {
+        "roll_off": 0.35,
+        "samples_per_symbol": 4
+      },
+      {
+        "roll_off": 0.35,
+        "samples_per_symbol": 8
+      },
+      {
+        "roll_off": 0.35,
+        "samples_per_symbol": 16
+      },
+      {
+        "roll_off": 0.35,
+        "samples_per_symbol": 32
+      },
+      {
+        "roll_off": 0.6,
+        "samples_per_symbol": 4
+      },
+      {
+        "roll_off": 0.6,
+        "samples_per_symbol": 8
+      },
+      {
+        "roll_off": 0.6,
+        "samples_per_symbol": 16
+      },
+      {
+        "roll_off": 0.6,
+        "samples_per_symbol": 32
+      }
+    ]
+  },
+  "dataset": "official_team_coordinates_preliminary",
+  "git_head": "de412acbbe5c609a2aae6ad8ff783006b4c52937",
+  "merged_main": "82076e4df96cdcd3477353af9ca34bab2ac74bee",
+  "analysis_code_git_blob": "bc0a4b6aea5d3e2a1a1b251a42ad66b71542519d",
+  "analysis_code_sha256": "b0bde96d00529e4538fb1675ef435e5c1b7ec8ed8e9aaa76780ec4d9e4bcc54f",
+  "input_sha256_by_path": {
+    "data/constellations.csv": "51af1252c298cf9516c5b4833264450dbd943f1b546d4ffd8f5cc58d52344f63",
+    "reference/rectangular.csv": "f36930d940ffd6a9c0f7e4502e94f73bb7268e27978b1d09c97b9d9c1e534cc3",
+    "results/metrics/geometry_metrics.csv": "616d6b7f2a692df6614bf3a51f38c4154e2c8108609a58dbc564e70c1465f6f5",
+    "results/metrics/distance_distribution.csv": "4dc25af833ce73af61393fb5b7ba1ace2673c36c86e6a28662f64476a7712399",
+    "results/metrics/theoretical_ser.csv": "94ef6b4d4c447dcdf66409828d546f08a670fdc2ef18f5f1b5b86b16fffb6d1f",
+    "results/metrics/simulation_results.csv": "a5616ac9853e6306a07bab95548c41ae485a13625328a4204f5ff1e76d7f12bf",
+    "analysis/baseline/baseline_mapped_constellations.csv": "d539c52219174514428fd80163ccdab3e8f18fe8ff9a04bd6a31e830ba0a8302",
+    "analysis/baseline_results/rrc_sweep_verified/constellation_metrics.csv": "f9ceed56e9b65378d1862aedaecc126a9c692b49e0f8c611b52bbb5c2ed31a16",
+    "analysis/baseline_results/rrc_sweep_verified/receiver_operation_counts.csv": "848cbb55daeb353f2d31280800dcdcad3bff4e2f2cfcab089d0c00e0e5ce45b7",
+    "analysis/baseline_results/rrc_sweep_verified/waveform_papr_summary.csv": "768ccb11c31d2f91fca7fe9539c5f88aa0a9248010055ff417cc0258f045a2f9"
+  },
+  "python": "3.15.2",
+  "numpy": "2.5.5",
+  "pandas": "3.1.1",
+  "scipy": "1.18.1",
+  "matplotlib": "3.11.2",
+  "command": "python analysis/analyze.py --input data/constellations.csv --out analysis/preliminary_results --waveform-sweep",
+  "baseline": false,
+  "rectangular_cpp_input_sha256": "b61ce8e2eaa6a7d34468a12365728b2574670545e77d69567fde2250c448c5d1"
+}
