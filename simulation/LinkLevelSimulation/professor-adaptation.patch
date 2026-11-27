@@ -1,0 +1,36 @@
+--- a/Source/Modulation/MaryModulation.cpp
++++ b/Source/Modulation/MaryModulation.cpp
+@@ -39,6 +39,2 @@
+    sigma = 1;
+-   char berFileName[] = "Data/ber.txt";
+-   berFile.OpenFile(berFileName);
+-   char serFileName[] = "Data/ser.txt";
+-   serFile.OpenFile(serFileName);
+ }
+@@ -70,2 +66,9 @@
+ { // Initialize simulation parameters
++   if (!legacyFilesOpened) {
++      char berFileName[] = "Data/ber.txt";
++      berFile.OpenFile(berFileName);
++      char serFileName[] = "Data/ser.txt";
++      serFile.OpenFile(serFileName);
++      legacyFilesOpened = true;
++   }
+    numSymbol = numSymbolError = numBitError = 0;
+--- a/Source/Modulation/MaryModulation.h
++++ b/Source/Modulation/MaryModulation.h
+@@ -54,2 +54,3 @@
+    float sigma;                                 // noise standard deviation
++   bool legacyFilesOpened = false;
+    FileOutput berFile;                          // BER file
+--- a/Source/Modulation/QAMa/QAMa.cpp
++++ b/Source/Modulation/QAMa/QAMa.cpp
+@@ -107,5 +107,5 @@
+ { // Demodulation
+-   int decision;
+-   float minDistance = 10000;                               // large number
+-   for (int i = 0; i < (1 << bitPerSymbol); i++) {
++   int decision = 0;
++   float minDistance = rx.Distance(qam[0]);
++   for (int i = 1; i < (1 << bitPerSymbol); i++) {
+       float distance = rx.Distance(qam[i]);
