@@ -6,12 +6,12 @@
 
 | 요건 | 상태 | 근거 또는 남은 작업 |
 | --- | --- | --- |
-| Part A · 교수님 Rectangular 및 Type1·2·3의 32점 설계, 범위·홀짝·정규화 | 완료 | `data/constellations.csv`, `reference/rectangular.csv`, A 기하 분석과 C 독립 검산. 방식별 32점, 5비트, 정규화 평균 에너지 1 |
+| Part A · 과제에서 제시한 Rectangular 기준 성상도 및 Type1·2·3의 32점 설계, 범위·홀짝·정규화 | 완료 | `data/constellations.csv`, `reference/rectangular.csv`, A 기하 분석과 C 독립 검산. 방식별 32점, 5비트, 정규화 평균 에너지 1 |
 | 유형별 SER 지향 탐색과 Gray-like 매핑 | 완료 | A의 단일 교환 탐색과 B의 최소거리 간선 최적화. 완전 Gray는 Rectangular에서 확인됐으며 유형별 전역 최적성은 증명 범위 밖 |
 | 공식 4종의 SER·BER·PAPR·수신 결정 복잡도·대칭 비교 및 지표별 결론 | 완료 | `docs/C_analysis.md`와 `analysis/final_results/final_comparison.csv`. 관측 SNR에 따른 순위와 소표본 한계 명시 |
 | Part B · 지정 세 시나리오의 KPI, 선택, 장점, 절충, 변경 요청 | 완료 | Drone과 PA 원문, B 보고서 10절, 시나리오 종합표. Alarm의 QPSK는 이론적 설계 판단이며 실제 패킷·지연 실험 범위 밖 |
 | 세 시나리오 비교표와 공통 질문 4개 | 완료 | `docs/scenarios/scenario_comparison.md`. Alarm 본문은 `docs/B_report_draft.md` 10절에 있고 `docs/scenario_alarm.md`는 빈 파일 |
-| 교수님 제공 시뮬레이터 사용 근거와 재현 | 완료 | B 문서의 원본 C++ 변경, 공식 CSV, 해시와 실행 기록. C의 최종 통합은 해당 공식 실험 결과를 읽어 재현 |
+| 배포 시뮬레이터의 적용 근거 및 재현성 | 완료 | B 문서의 원본 C++ 변경, 공식 CSV, 해시와 실행 기록. C의 최종 통합은 해당 공식 실험 결과를 읽어 재현 |
 | 무작위 발표자, 약 5분, 스크립트 미사용 | 미완료 | 발표 이행 및 팀 전체 이해 여부는 저장소로 확인할 수 없다. 제출 전 팀 리허설로 점검 |
 
 ## 보고서 목차 대조
