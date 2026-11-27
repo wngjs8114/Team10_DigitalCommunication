@@ -1,0 +1,85 @@
+{
+  "baseline": false,
+  "input_sha256": "6705feced14ea9bce4c8782ced174e07427bf515341f4a8d62b8419975bc555b",
+  "seed": 2026,
+  "receiver_test_samples": 10000,
+  "decision_geometry": "clipped ML half-planes",
+  "decision_axis_limit": 2,
+  "reference_sha256": "51af1252c298cf9516c5b4833264450dbd943f1b546d4ffd8f5cc58d52344f63",
+  "waveform": {
+    "roll_off": 0.35,
+    "samples_per_symbol": 8,
+    "span_symbols": 10,
+    "frames": 2000,
+    "frame_symbols": 512,
+    "guard_symbols": 8,
+    "conditions": [
+      {
+        "roll_off": 0.15,
+        "samples_per_symbol": 4
+      },
+      {
+        "roll_off": 0.15,
+        "samples_per_symbol": 8
+      },
+      {
+        "roll_off": 0.15,
+        "samples_per_symbol": 16
+      },
+      {
+        "roll_off": 0.15,
+        "samples_per_symbol": 32
+      },
+      {
+        "roll_off": 0.35,
+        "samples_per_symbol": 4
+      },
+      {
+        "roll_off": 0.35,
+        "samples_per_symbol": 8
+      },
+      {
+        "roll_off": 0.35,
+        "samples_per_symbol": 16
+      },
+      {
+        "roll_off": 0.35,
+        "samples_per_symbol": 32
+      },
+      {
+        "roll_off": 0.6,
+        "samples_per_symbol": 4
+      },
+      {
+        "roll_off": 0.6,
+        "samples_per_symbol": 8
+      },
+      {
+        "roll_off": 0.6,
+        "samples_per_symbol": 16
+      },
+      {
+        "roll_off": 0.6,
+        "samples_per_symbol": 32
+      }
+    ]
+  },
+  "git_head": "153193530e07856cfb337c029aa60a12cb21a03c",
+  "integration_scope": "official optimized mapping; paired simulation for both mappings",
+  "integration_input_sha256": {
+    "data/constellations.csv": "51af1252c298cf9516c5b4833264450dbd943f1b546d4ffd8f5cc58d52344f63",
+    "data/mapped_constellations.csv": "6705feced14ea9bce4c8782ced174e07427bf515341f4a8d62b8419975bc555b",
+    "results/metrics/geometry_metrics.csv": "616d6b7f2a692df6614bf3a51f38c4154e2c8108609a58dbc564e70c1465f6f5",
+    "results/metrics/simulation_results.csv": "0780fa0843288be2c9279ad75285fda736273088cb1c5258b196091fe3a650e6",
+    "results/metrics/mapping_metrics.csv": "801bdc1aa7a28061671ef699c1ff5120fc7d80e163f197401a4bea7f2cfe4b79",
+    "results/metrics/theoretical_ser.csv": "94ef6b4d4c447dcdf66409828d546f08a670fdc2ef18f5f1b5b86b16fffb6d1f",
+    "results/metrics/optimized_run_receipt.json": "3d30b5b9e4e00b70117dc3ec1bb30420743a4d64fe58cb9a3476fa6e9e3b73c5",
+    "analysis/preliminary_results/constellation_metrics.csv": "ad01f2cace22d0ba811f915adc3e8455b2a1f2a7c76bbeb0179c93e0b4431584",
+    "analysis/preliminary_results/receiver_complexity.csv": "753d367c6372dc052e29f5e0c4974f4682b4265a70bb6c660aad31bd1e2eaa81",
+    "analysis/preliminary_results/receiver_operation_counts.csv": "46f169c880970cb1b7257ba4871e49bfbcfe916c4d4cd1c076f2776306fe66b6",
+    "analysis/preliminary_results/waveform_papr.csv": "00155918b9e1c8504c575cb6529a745225f3255cd7f3032fce3cb4bd94cb2311",
+    "analysis/preliminary_results/waveform_papr_summary.csv": "3f4bfeb0725e064987bea0063cb91ad10dace3bcef33a677ebbe35ee9ff74d07",
+    "analysis/analyze.py": "b0bde96d00529e4538fb1675ef435e5c1b7ec8ed8e9aaa76780ec4d9e4bcc54f",
+    "analysis/integrate_final.py": "69c28ea16b751963b4056bb2552e6ceac7c999ad93587eb64b2a06799303fda3"
+  }
+}
