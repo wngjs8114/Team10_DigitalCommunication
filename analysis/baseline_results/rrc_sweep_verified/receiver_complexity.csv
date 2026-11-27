@@ -1,0 +1,5 @@
+scheme,brute_candidates,brute_comparisons,I_columns,grouped_final_candidates,cartesian_product,test_samples,distance_agreement,tie_samples,index_mismatches,independent_index_mismatches
+Rectangular,32,31,4,4,1,10000,1,0,0,0
+Type1,32,31,6,6,0,10000,1,0,0,
+Type2,32,31,7,7,0,10000,1,0,0,
+Type3,32,31,8,8,0,10000,1,0,0,

@@ -1,0 +1,66 @@
+{
+  "baseline": true,
+  "input_sha256": "d539c52219174514428fd80163ccdab3e8f18fe8ff9a04bd6a31e830ba0a8302",
+  "seed": 2026,
+  "receiver_test_samples": 10000,
+  "decision_geometry": "clipped ML half-planes",
+  "decision_axis_limit": 2,
+  "waveform": {
+    "roll_off": 0.35,
+    "samples_per_symbol": 8,
+    "span_symbols": 10,
+    "frames": 2000,
+    "frame_symbols": 512,
+    "guard_symbols": 8,
+    "conditions": [
+      {
+        "roll_off": 0.15,
+        "samples_per_symbol": 4
+      },
+      {
+        "roll_off": 0.15,
+        "samples_per_symbol": 8
+      },
+      {
+        "roll_off": 0.15,
+        "samples_per_symbol": 16
+      },
+      {
+        "roll_off": 0.15,
+        "samples_per_symbol": 32
+      },
+      {
+        "roll_off": 0.35,
+        "samples_per_symbol": 4
+      },
+      {
+        "roll_off": 0.35,
+        "samples_per_symbol": 8
+      },
+      {
+        "roll_off": 0.35,
+        "samples_per_symbol": 16
+      },
+      {
+        "roll_off": 0.35,
+        "samples_per_symbol": 32
+      },
+      {
+        "roll_off": 0.6,
+        "samples_per_symbol": 4
+      },
+      {
+        "roll_off": 0.6,
+        "samples_per_symbol": 8
+      },
+      {
+        "roll_off": 0.6,
+        "samples_per_symbol": 16
+      },
+      {
+        "roll_off": 0.6,
+        "samples_per_symbol": 32
+      }
+    ]
+  }
+}
